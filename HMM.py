@@ -91,6 +91,17 @@ class HMM:
             raw_E_sum = raw_E.sum(axis = 1, keepdims = True)
             self.E = raw_E.astype(float)/raw_E_sum
 
+        if 'F' in args:
+            self.F = args['F']
+            for i in self.F.keys():
+                self.T[i,:] = self.F[i]
+            if sum(self.F[i])!= 1:
+               raise Exception("The probability transferring from this state should sum up to 1.")
+        else:
+            self.F = {}
+
+
+
 
         # Initialize th
         if 'Pi' in args:
@@ -188,7 +199,6 @@ class HMM:
                 print Alpha
                 print "\nP(Obs|hmm)=" + str(prob)
             return(prob, Alpha)
-
 
     def backward(self, Obs, debug = False, **args):
         """
@@ -397,6 +407,11 @@ class HMM:
                     print "\nUpdated T"
                     print self.T
 
+            if len(self.F) != 0:
+                for i in self.F.keys():
+                    self.T[i,:] = self.F[i]
+
+
 
             if updateE:
                 E_hat = numpy.zeros([self.N, self.M],float).reshape(self.N, self.M)
@@ -407,8 +422,6 @@ class HMM:
                 if debug:
                     print "\nUpdated E"
                     print self.E
-
-
 
             LLs.append(LogLikelihood)
             print "\nlog likelihood for this iteration is " + str(LogLikelihood)
@@ -440,10 +453,11 @@ class HMM:
 
 if __name__ == '__main__':
     symbols = ["wrong", "correct"]
-    T = numpy.array([0.2,0.8,0.6,0.4]).reshape(2,2)
-    E = numpy.array([0.3,0.7,0.1,0.9]).reshape(2,2)
-    hmm = HMM(2, T = T, E = E, V = symbols)
-    hmm.print_HMM("OROGINAL HMM ELEMENTS")
+    T = numpy.array([0.9,0.1,0.2,0.8]).reshape(2,2)
+    E = numpy.array([0.9,0.1,0.9,0.1]).reshape(2,2)
+    F = {1:[0,1]}
+    hmm = HMM(2, T=T , V = symbols, F=F)
+    hmm.print_HMM("ORIGINAL HMM ELEMENTS")
     Obs = ["correct","correct","wrong","correct","correct","wrong","wrong","correct","correct","correct","correct","correct"]
     Obs2 = ["correct","correct","wrong","correct","correct","wrong","wrong","correct","correct","correct","correct","correct"]
     Obs3 = ["correct","correct","wrong","correct","correct","wrong","wrong","correct","correct","correct","correct","correct"]
