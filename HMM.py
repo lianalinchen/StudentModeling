@@ -438,7 +438,6 @@ class HMM:
         self.print_HMM("Updated HMM")
 
 
-
 if __name__ == '__main__':
     symbols = ["wrong", "correct"]
     T = numpy.array([0.2,0.8,0.6,0.4]).reshape(2,2)
