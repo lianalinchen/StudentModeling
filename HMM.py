@@ -318,7 +318,7 @@ class HMM:
 
         for epoch in xrange(epochs):
 
-            print "-"*10 + "\n"+ "Epoch "+str(epoch)+"\n"+"-"*10 + "\n"
+            print "-"*10 + "\n"+ "Epoch "+str(epoch)+"\n"+"-"*10
 
             exp_si_t0 = numpy.zeros([self.N],float)
             exp_num_from_Si = numpy.zeros([self.N],float)
@@ -456,7 +456,7 @@ if __name__ == '__main__':
     T = numpy.array([0.9,0.1,0.2,0.8]).reshape(2,2)
     E = numpy.array([0.9,0.1,0.9,0.1]).reshape(2,2)
     F = {1:[0,1]}
-    hmm = HMM(2, T=T , V = symbols, F=F)
+    hmm = HMM(2, T=T , E=E, V = symbols, F=F)
     hmm.print_HMM("ORIGINAL HMM ELEMENTS")
     Obs = ["correct","correct","wrong","correct","correct","wrong","wrong","correct","correct","correct","correct","correct"]
     Obs2 = ["correct","correct","wrong","correct","correct","wrong","wrong","correct","correct","correct","correct","correct"]
