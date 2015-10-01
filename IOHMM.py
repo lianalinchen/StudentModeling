@@ -35,7 +35,7 @@ class IOHMM:
 
     """
 
-    def __init__(self, n_states=1, **args):
+    def __init__(self, n_states, input, output, **args):
         """
         Initialize an HMM.
 
@@ -53,14 +53,14 @@ class IOHMM:
         self.N = n_states
 
         #Initialize observable INPUT symbol set parameters
-        self.U = args['U']
+        self.U = input
         self.K = len(self.U)
         self.input_map = dict(zip(self.U, range(len(self.U))))
 
         # Initialize observable symbols set parameters
-        self.V = args['V']
+        self.V = output
         self.M = len(self.V)
-        self.symbol_map = dict( zip ( self.V, range( len( self.V ) )) )
+        self.output_map = dict( zip ( self.V, range( len( self.V ) )) )
 
 
 
@@ -73,7 +73,7 @@ class IOHMM:
 
             for i in xrange(self.K):
                 if not numpy.array_equal(self.T[i].sum(1), numpy.array([1.0,1.0])):
-                    raise Exception("The sum of each row in the transmission matrix should equal to 1")
+                    raise ValueError("The sum of each row in the transmission matrix should equal to 1")
 
         else:
             raw_T = rand.uniform(0,1, self.K * self.N * self.N).reshape(self.K, self.N, self.N)
@@ -142,9 +142,4 @@ class IOHMM:
 
 
 if __name__ == '__main__':
-    symbols = ["wrong", "correct"]
-    input = ["elicit", "tell"]
-    T = numpy.array([0.1,0.9,0.3,0.7,0.5,0.5,0.2,0.8]).reshape(2,2,2)
-    E = numpy.array([0.9,0.1,0.9,0.1]).reshape(2,2)
-    iohmm = IOHMM(2, T=T,  U = input,  V = symbols)
-    iohmm.print_iohmm("ORIGINAL IOHMM")
+    pass
