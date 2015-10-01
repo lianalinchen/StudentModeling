@@ -33,9 +33,11 @@ class TestIOHMM(TestCase):
         input = ["elicit", "tell"]
         output = ["wrong", "correct"]
         T = numpy.array([0.1,0.4,0.2,0.8,0.3,0.7,0.4,0.6]).reshape(2,2,2)
-        self.assertRaises(ValueError,  IOHMM(2, input = input,  output = output, T=T) )
-
-
+        with self.assertRaises(ValueError) as context:
+            IOHMM(2, input = input,  output = output, T=T)
+            self.assertTrue("The sum of each row in the transmission matrix should equal to 1"
+                            in context.exception )
+  
     def testTransProbabilityValidAssignment(self):
         input = ["elicit", "tell"]
         output = ["wrong", "correct"]
