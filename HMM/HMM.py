@@ -224,9 +224,7 @@ class HMM:
 
         # Induction
         for t in reversed(xrange(T-1)):
-
-            #Beta[:,t] = numpy.dot(self.T, Beta[:,t+1]* self.E[:,Obs[t+1]])
-            Beta[:,t] = (self.T * self.E[:,Obs[t+1]] * Beta[:,t+1]).sum(0)
+            Beta[:,t] = numpy.dot((self.T * self.E[:,Obs[t+1]]), Beta[:,t+1])
             if debug:
                 print "t=" + str(t)
                 print Beta[:,t]

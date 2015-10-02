@@ -96,3 +96,26 @@ class TestHMM(TestCase):
         Pi = numpy.array([0.5, 0.5])
         hmm = HMM(2, output = symbols, Pi= Pi)
         self.assertTrue(numpy.array_equal(hmm.Pi, Pi))
+
+    def testForward(self):
+        symbols = ["wrong", "correct"]
+        T = numpy.array([0.4,0.6,0,1]).reshape(2,2)
+        E = numpy.array([0.4,0.6,0.1,0.9]).reshape(2,2)
+        Pi = numpy.array([0.5,0.5])
+        hmm = HMM(2, output = symbols, T=T, E=E, Pi=Pi)
+        output_seq = ["correct","correct","wrong","correct","correct"]
+        result = hmm.forward(output_seq)
+        self.assertEqual(result[0], -2.861525489057914)
+        result2 = hmm.forward(output_seq, scaling=True)
+        self.assertEqual(result2[0], -2.861525489057914)
+
+    def testBackward(self):
+        symbols = ["wrong", "correct"]
+        T = numpy.array([0.4,0.6,0,1]).reshape(2,2)
+        E = numpy.array([0.4,0.6,0.1,0.9]).reshape(2,2)
+        Pi = numpy.array([0.5,0.5])
+        hmm = HMM(2, output = symbols, T=T, E=E, Pi=Pi)
+        output_seq = ["correct","correct","wrong","correct","correct"]
+        result = hmm.backward(output_seq)
+        r = numpy.array([0.08125488, 0.156312, 0.6732, 0.78, 1. ,0.0729, 0.081, 0.81, 0.9, 1.  ]).reshape(2,5)
+        self.assertTrue(numpy.allclose(result,r))
