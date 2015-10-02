@@ -82,44 +82,42 @@ class IOHMM:
             self.T =  raw_T
 
 
-
-
-
         # Initialize emission probability matrix
         if 'E' in args:
             self.E = args['E']
 
             if numpy.shape(self.E) != (self.K, self.N, self.M):
                 raise ValueError("The emission probaility matrix dimension mismatches the given states number and "
-                                 "output symbols number")
+                                 "input/output symbols number")
 
-            #if not numpy.array_equal(self.E.sum(1), numpy.array([1.0] * len(self.E.sum(1)))):
-            #   raise ValueError("The sum of each row in the emission probability matrix should equal to 1")
+            for i in xrange(self.K):
+                if not numpy.array_equal(self.E[i].sum(1), numpy.array([1.0,1.0])):
+                    raise ValueError("The sum of each row in the emission matrix should equal to 1")
         else:
-            raw_E = rand.uniform(0,1,self.N * self.M).reshape(self.N, self.M)
-            raw_E_sum = raw_E.sum(axis = 1, keepdims = True)
-            self.E = raw_E.astype(float)/raw_E_sum
+            raw_E = rand.uniform(0,1,self.K*self.N * self.M).reshape(self.K, self.N, self.M)
+            for i in xrange(self.K):
+                raw_E[i] = (raw_E[i].T/raw_E[i].sum(1)).T
+            self.E = raw_E
+
+
 
         if 'F' in args:
             self.F = args['F']
-            for i in self.F.keys():
-                self.T[i,:] = self.F[i]
-            if sum(self.F[i])!= 1:
-               raise Exception("The probability transferring from this state should sum up to 1.")
+            for key in self.F.keys():
+                if sum(self.F[key])!= 1:
+                   raise ValueError("The probability transferring from this state should sum up to 1.")
+                self.T[key[0],key[1],:] = self.F[key]
         else:
             self.F = {}
 
-
-
-
-        # Initialize th
+        # Initialize Initial State Distribution
         if 'Pi' in args:
             self.Pi = args['Pi']
 
             if len(self.Pi) != self.N:
                 raise ValueError("The initial state probability dimension mismatches the given states number.")
 
-            if self.Pi.sum() != 1:
+            if numpy.sum(self.Pi)!= 1:
                 raise ValueError("The initial state probability does not add up to 1.")
 
         else:
@@ -133,13 +131,117 @@ class IOHMM:
         print "\n"*2+ "*"*24 + "\n" + label  + "\n" + "*"*24 + "\n"
         print "\n1) Numerber of hidden states:" + str(self.N)
         print "\n3) The input mapping in IOHMM:" + str(self.input_map)
-        print "\n5) The symbol mapping in IOHMM:" + str(self.symbol_map)
+        print "\n5) The output mapping in IOHMM:" + str(self.output_map)
         print "\n6) The transmission proability matrix T:\n" + str(self.T)
         print "\n7) The emission probability matrix E:\n" + str(self.E)
         print "\n8) The initial state probability Pi: \n" + str(self.Pi)
+
+    def toIndex(self, seq, map):
+        index_seq = []
+        for o in seq:
+            if o not in map:
+                raise ValueError("The symbol "+o+" is not defined.")
+            index_seq.append(map[o])
+        return index_seq
+
+    def forward(self, Input, Output, scaling = False, debug = False):
+
+        if debug:
+            print "\n"*2+ "*"*23 + "\n" +"*"*2+" FORWARD ALGORITHM "+"*"*2 + "\n" + "*"*23 + "\n"
+
+        input_seq = self.toIndex(Input, self.input_map)
+        output_seq = self.toIndex(Output, self.output_map)
+        T = len(input_seq)
+        # create scaling vector
+        if scaling:
+            c = numpy.zeros([T],float)
+
+
+
+        # Instantiation
+        Alpha = numpy.zeros([self.N, T],float)
+        Alpha[:,0] = self.Pi * self.E[input_seq[0],:,output_seq[0]]
+        if debug:
+            print "t=0"
+            print Alpha[:,0]
+
+
+
+        #Induction
+        for t in xrange(1, T):
+            Alpha[:,t] = numpy.dot(Alpha[:,t-1],self.T[input_seq[t]])
+            if debug:
+                print "t=" + str(t)
+                print Alpha[:,t]
+
+        if scaling:
+            c = 1.0/ Alpha.sum(0)
+            Alpha = Alpha * c
+            log_prob = -numpy.log(c[T-1])
+
+            if debug:
+                print "\nAlpha:"
+                print Alpha
+                print "\nc:"
+                print c
+                print "\nP(Obs|iohmm)=" + str(log_prob)
+            return (log_prob, Alpha, c)
+
+        else:
+            prob = numpy.log(numpy.sum(Alpha[:, T-1]))
+            if debug:
+                print "\nAlpha:"
+                print Alpha
+                print "\nP(Obs|iohmm)=" + str(prob)
+            return (prob, Alpha)
+
+    def backward(self, Input, Output, debug = False):
+        if debug:
+            print "\n"*2+ "*"*24 + "\n" +"*"*2+" BACKWARD ALGORITHM "+"*"*2 + "\n" + "*"*24 + "\n"
+
+        input_seq = self.toIndex(Input, self.input_map)
+        output_seq = self.toIndex(Output, self.output_map)
+        T = len(input_seq)
+
+        # Initialization
+        Beta = numpy.zeros([self.N, T], float)
+        Beta[:, T-1] = 1.0
+
+        if debug:
+            print "t=" + str(T-1)
+            print Beta[:,T-1]
+
+        # Induction
+        for t in reversed(xrange(T-1)):
+            print "\n"
+            print self.T[input_seq[t]]
+            print self.E[input_seq[t+1],:,output_seq[t+1]]
+            print Beta[:,t+1]
+            #Beta[:,t] = (self.T[input_seq[t]] * self.E[input_seq[t+1],:,output_seq[t+1]] * Beta[:,t+1]).sum(0)
+            Beta[:,t] = numpy.dot(self.T[input_seq[t]] , self.E[input_seq[t+1],:,output_seq[t+1]] * Beta[:,t+1])
+            if debug:
+                print "t=" + str(t)
+                print Beta[:,t]
+
+        if debug:
+            print "\nBeta:"
+            print Beta
+
+        return Beta
+
+
 
 
 
 
 if __name__ == '__main__':
-    pass
+    input = ["elicit", "tell"]
+    output = ["wrong", "correct", "told"]
+    input_seq = ["elicit", "tell", "elicit", "elicit", "tell"]
+    output_seq = ["wrong", "told","correct","wrong","told"]
+    T = numpy.array([0.2,0.8,0,1,0.1,0.9,0,1]).reshape(2,2,2)
+    E = numpy.array([0.5,0.5,0,0.1,0.9,0,0,0,1,0,0,1]).reshape(2,2,3)
+    Pi = numpy.array([0.5,0.5])
+    iohmm = IOHMM(2, input=input, output=output, T=T, E=E, Pi=Pi)
+    iohmm.print_iohmm("ORIGINAL IOHMM ELEMENTS")
+    iohmm.backward(input_seq, output_seq, debug= True)
