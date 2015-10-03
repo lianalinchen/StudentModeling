@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import numpy
 
-from IOHMM.IOHMM import IOHMM
+from IOHMM import IOHMM
 
 __author__ = 'adminuser'
 
@@ -152,19 +152,6 @@ class TestIOHMM(TestCase):
         result = iohmm.backward(input_seq, output_seq)
         Beta = numpy.array([0.09, 0.09, 0.18, 1, 1, 0.09, 0.09, 0.1, 1, 1]).reshape(2,5)
         self.assertTrue(numpy.allclose(result, Beta))
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

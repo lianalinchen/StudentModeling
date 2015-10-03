@@ -213,8 +213,8 @@ class IOHMM:
 
         # Induction
         for t in reversed(xrange(T-1)):
-            #Beta[:,t] = (self.T[input_seq[t]] * self.E[input_seq[t+1],:,output_seq[t+1]] * Beta[:,t+1]).sum(0)
-            Beta[:,t] = numpy.dot(self.T[input_seq[t]] , self.E[input_seq[t+1],:,output_seq[t+1]] * Beta[:,t+1])
+            #Beta[:,t] = numpy.dot(self.T[input_seq[t]] , self.E[input_seq[t+1],:,output_seq[t+1]] * Beta[:,t+1])
+            Beta[:,t] = numpy.dot(self.T[input_seq[t]] * self.E[input_seq[t+1],:,output_seq[t+1]]  , Beta[:,t+1])
             if debug:
                 print "t=" + str(t)
                 print Beta[:,t]
@@ -225,7 +225,155 @@ class IOHMM:
 
         return Beta
 
-    def bawn_welch(self, Input, Output, debug = False):
+    def bawn_welch(self, Input, Output, **args):
+
+        print "\n"*2+ "*"*24 + "\n" +"*"*1+" Bawn Welch ALGORITHM "+"*"*1 + "\n" + "*"*24 + "\n"
+
+        epochs = args['epochs'] if 'epochs' in args else 20
+        updatePi = args['updatePi'] if 'updatePi' in args else True
+        updateT = args['updateT'] if 'updateT' in args else True
+        updateE = args['updateE'] if 'updateE' in args else True
+        debug = args['debug'] if 'debug' in args else False
+        epsilon = args['epsilon'] if 'epsilon' in args else 0.001
+        Val_seq = args['val'] if 'val' in args else None
+
+        LLS = []
+
+
+
+        for epoch in xrange(epochs):
+
+            print "-"*10 + "\n"+ "Epoch "+str(epoch)+"\n"+"-"*10
+
+            exp_si_t0 = numpy.zeros([self.N],float)
+            exp_num_from_Si = numpy.zeros([self.K , self.N],float)
+            exp_num_in_Si = numpy.zeros([self.K , self.N],float)
+            exp_num_Si_Sj = numpy.zeros([self.K ,self.N ,self.N],float)
+            exp_num_in_Si_Vk = numpy.zeros([self.K, self.N, self.M], float)
+            LogLikelihood = 0
+
+            for i in xrange(len(Input)):
+                if debug:
+                    print "\nThe input sequence is: "+ str(Input[i])
+                    print "\nThe output sequence is: "+str(Output[i])
+
+                log_prob, Alpha = self.forward(Input[i], Output[i], scaling= False, debug= False)
+
+                Beta = self.backward(Input[1], Output[1], debug = False)
+                LogLikelihood += log_prob
+
+                if debug:
+                    print "\nAlpha:"
+                    print Alpha
+                    print "\nBeta:"
+                    print Beta
+
+                T = len(Input[i])
+                input = self.toIndex(Input[i], self.input_map)
+                output = self.toIndex(Output[i], self.output_map)
+
+                raw_Gamma = Alpha * Beta
+                Gamma = raw_Gamma/raw_Gamma.sum(0)
+                if debug:
+                    print "\nRaw Gamma:"
+                    print raw_Gamma
+                    print "\nGamma:"
+                    print Gamma
+
+
+                exp_si_t0 += Gamma[:, 0]
+                #exp_si_t0 += Gamma[0,:]
+                for each in self.input_map:
+                    which = numpy.array([self.input_map[each]==x for x in input])
+                    exp_num_in_Si[self.input_map[each],] += Gamma[:,which].sum(1)
+                    exp_num_from_Si[self.input_map[each],] += Gamma[:,which[:T-1]].sum(1)
+
+                # The probability in state Si having Observation Oj
+                for each_input in self.input_map:
+                    for each_output in self.output_map:
+                        which_input = numpy.array([self.input_map[each_input]==x for x in input])
+                        which_output = numpy.array([self.output_map[each_output]==x for x in output])
+                        exp_num_in_Si_Vk[self.input_map[each_input], : , self.output_map[each_output]] += \
+                            Gamma[:, which_input & which_output].sum(1)
+
+
+
+                if debug:
+                    print "\nExpected frequency in state S_i at time 0:\n" + str(exp_si_t0)
+                    print "\nExpected number of transition from state S_i:\n" + str(exp_num_from_Si)
+                    print "\nExpected number of time in state S_i:\n" + str(exp_num_in_Si)
+                    print "\nExpected number of time in state S_i observing V_k:\n" + str(exp_num_in_Si_Vk)
+
+                # Given the parameters, what's the probability of staying at state Si at t
+                # and at state Sj at t+1 and observation
+                Xi = numpy.zeros([T-1, self.K, self.N, self.N], float)
+                for t in xrange(T-1):
+                    for i in xrange(self.N):
+                        Xi[t, input[t], i, :] = Alpha[i,t] * self.T[input[t],i,:] * self.E[input[t+1],:, output[t+1]] * Beta[:,t+1]
+
+
+                for t in xrange(T-1):
+                    exp_num_Si_Sj[input[t]] += Xi[t,input[t],:,:]
+                if debug:
+                    print "\nExpected number of transitions from state Si to state Sj: \n" + str(exp_num_Si_Sj)
+
+            # Reestimate model parameters #
+            # Reestimate initial state probabilities
+            if updatePi:
+                self.Pi = exp_si_t0/exp_si_t0.sum()
+                if debug:
+                    print "\nUpdated Pi:"
+                    print self.Pi
+            if updateT:
+                T_hat = numpy.zeros([self.K, self.N, self.N], float)
+                for i in xrange(self.K):
+                    for j in xrange(self.N):
+                        T_hat[i,j,:] = exp_num_Si_Sj[i,j,:] / exp_num_from_Si[i,j]
+                        T_hat[i,j,:] /= T_hat[i,j,:].sum()
+                self.T = T_hat
+                if debug:
+                    print "\nUpdated T"
+                    print self.T
+            if len(self.F) != 0:
+                for key in self.F.keys():
+                    self.T[key[0],key[1],:] = self.F[key]
+            if updateE:
+                E_hat = numpy.zeros([self.K, self.N, self.M])
+                for i in xrange(self.K):
+                    for j in xrange(self.N):
+                        E_hat[i,j,:] = exp_num_in_Si_Vk[i,j,:]/exp_num_in_Si[i,j]
+                        E_hat[i,j,:] /= E_hat[i,j,:].sum()
+                self.E = E_hat
+                if debug:
+                    print "\nUpdated E"
+                    print self.E
+            LLS.append(LogLikelihood)
+            print "\nLog Likelihood for this iteration is " + str(LogLikelihood)
+            if epoch > 1:
+                if(abs(LLS[epoch]-LLS[epoch-1]) < epsilon):
+                    print "\nThe loglikelihood improvement falls below threshold, training terminates at " \
+                          "epoch " + str(epoch) + "!"
+
+                    break
+
+        if Val_seq != None:
+            probs = 0
+            for i in xrange(len(Val_seq[0])):
+                inp = Val_seq[0][i]
+                outp = Val_seq[1][i]
+                prob, Alpha = self.forward(inp, outp, scaling = False, debug = False)
+                probs += prob
+
+        if debug:
+            print "\n"*2+ "*"*24 + "\n" +"*"*1+" Validation  "+"*"*1 + "\n" + "*"*24 + "\n"
+            print "Testing sequence loglikelihood is: "+ str(probs)
+            print "Testing sequence probability is: "+ str(numpy.e ** probs)
+        else:
+            print "\nTesting sequence loglikelihood is: "+ str(probs)
+
+        self.print_iohmm("UPDATED HMM ELEMENTS")
+
+
 
 
 
@@ -240,4 +388,11 @@ if __name__ == '__main__':
     Pi = numpy.array([0.5,0.5])
     iohmm = IOHMM(2, input=input, output=output, T=T, E=E, Pi=Pi)
     iohmm.print_iohmm("ORIGINAL IOHMM ELEMENTS")
-    iohmm.backward(input_seq, output_seq, debug= True)
+    input_seqs = []
+    input_seqs.append(input_seq)
+    input_seqs.append(input_seq)
+    output_seqs = []
+    output_seqs.append(output_seq)
+    output_seqs.append(output_seq)
+
+    iohmm.bawn_welch(input_seqs,output_seqs, debug= False, val = (input_seqs, output_seqs))

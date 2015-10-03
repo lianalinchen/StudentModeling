@@ -354,6 +354,7 @@ class HMM:
                 exp_num_from_Si += Gamma[:,:T-1].sum(1)
                 exp_num_in_Si += Gamma.sum(1)
 
+                # The probability in state Si having Observation Oj
                 temp = numpy.zeros([self.N, self.M], float)
 
                 for each in self.symbol_map.iterkeys():
@@ -367,7 +368,13 @@ class HMM:
                     print "Expected number of time in state S_i:\n" + str(exp_num_in_Si)
                     print "Expected number of time in state S_i observing V_k:\n" + str(exp_num_in_Si_Vk)
 
-                Xi = numpy.zeros([T-1, hmm.N, hmm.N],float)
+
+
+
+
+
+
+                Xi = numpy.zeros([T-1, self.N, self.N],float)
                 for t in xrange(T-1):
                     for i in xrange(self.N):
                         Xi[t,i,:] = Alpha[i,t] * self.T[i,:] * self.E[:,Obs[t+1]] * Beta[:,t+1]
