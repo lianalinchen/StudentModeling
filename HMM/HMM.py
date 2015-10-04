@@ -37,15 +37,13 @@ class HMM:
 
     def __init__(self, n_states, output,  **args):
         """
-        Initialize an HMM.
-
-        :param n_state: number of hidden states
-        :param args:
-               V - list of all observable symbols.
-               Pi - Initial state probability matrix.
-               A - transition matrix.
-               B - emission probability matrix.
-
+        Keywords
+        :param n_states: number of hidden states
+        :param output: the output symbol notations
+        :param args: 'Pi' - matrix of initial state probability distribution
+                     'T' - matrix of transmission probability
+                     'E' - matrix of emission probability
+                     'F' - fixed emission probability for the given state {'state1': [0.2, 0.8]}
         :return:
         """
 
@@ -304,7 +302,7 @@ class HMM:
         """
         print "\n"*2+ "*"*24 + "\n" +"*"*1+" Bawn Welch ALGORITHM "+"*"*1 + "\n" + "*"*24 + "\n"
 
-        epochs = args['epochs'] if 'epochs' in args else 20
+        epochs = args['epochs'] if 'epochs' in args else 50
         updatePi = args['updatePi'] if 'updatePi' in args else True
         updateT = args['updateT'] if 'updateT' in args else True
         updateE = args['updateE'] if 'updateE' in args else True
@@ -330,7 +328,7 @@ class HMM:
                     print "\nThe observation sequence is: "+ str(Obs)
 
                 #log_prob, Alpha, c = self.forward(Obs, scaling= True, debug= False)
-                log_prob, Alpha = self.forward(Obs, scaling= False, debug= False)
+                log_prob, Alpha, c= self.forward(Obs, scaling= True, debug= False)
 
                 Beta = self.backward(Obs, debug= False)
                 LogLikelihood += log_prob
@@ -369,23 +367,18 @@ class HMM:
                     print "Expected number of time in state S_i observing V_k:\n" + str(exp_num_in_Si_Vk)
 
 
-
-
-
-
-
                 Xi = numpy.zeros([T-1, self.N, self.N],float)
                 for t in xrange(T-1):
                     for i in xrange(self.N):
                         Xi[t,i,:] = Alpha[i,t] * self.T[i,:] * self.E[:,Obs[t+1]] * Beta[:,t+1]
-                        Xi[t,i,:] /= Xi[t,i,:].sum()
-                    #scale = Xi[t,:,:].sum()
-                    #Xi[t,:,:] /=  scale
+                    Xi[t,:,:] /= Xi[t,:,:].sum()
+
                 if debug:
                     print "\nXi:"
                     print Xi
 
                 for t in xrange(T-2):
+
                     exp_num_Si_Sj += Xi[t,:,:]
 
                 if debug:
@@ -446,14 +439,18 @@ class HMM:
                 prob, Alpha = self.forward(Obs, scaling= False, debug=False)
                 probs += prob
 
-        if debug:
-            print "\n"*2+ "*"*24 + "\n" +"*"*1+" Validation  "+"*"*1 + "\n" + "*"*24 + "\n"
-            print "Testing sequence loglikelihood is: "+ str(probs)
-            print "Testing sequence probability is: "+ str(numpy.e ** probs)
-        else:
-            print "\nTesting sequence loglikelihood is: "+ str(probs)
+            if debug:
+                print "\n"*2+ "*"*24 + "\n" +"*"*1+" Validation  "+"*"*1 + "\n" + "*"*24 + "\n"
+                print "Testing sequence loglikelihood is: "+ str(probs)
+                print "Testing sequence probability is: "+ str(numpy.e ** probs)
+            else:
+                print "\nTesting sequence loglikelihood is: "+ str(probs)
+
+            return probs
 
         self.print_HMM("Updated HMM")
+        return (self.Pi, self.T, self.E)
+
 
 
 if __name__ == '__main__':
@@ -461,22 +458,22 @@ if __name__ == '__main__':
     T = numpy.array([0.9,0.1,0.2,0.8]).reshape(2,2)
     E = numpy.array([0.9,0.1,0.9,0.1]).reshape(2,2)
     F = {1:[0,1]}
-    hmm = HMM(2, T=T , E=E, V = symbols, F=F)
+    hmm = HMM(2, output = symbols, T=T , E=E)
+
     hmm.print_HMM("ORIGINAL HMM ELEMENTS")
-    Obs = ["correct","correct","wrong","correct","correct","wrong","wrong","correct","correct","correct","correct","correct"]
-    Obs2 = ["correct","correct","wrong","correct","correct","wrong","wrong","correct","correct","correct","correct","correct"]
-    Obs3 = ["correct","correct","wrong","correct","correct","wrong","wrong","correct","correct","correct","correct","correct"]
-    test = ["correct","correct","wrong","wrong","wrong","wrong"]
-    test2 = ["correct","wrong","wrong","wrong","wrong","wrong"]
-    #hmm.forward(Obs, scaling= False, debug= True)
-    #hmm.backward(Obs, debug= True)
-    #hmm.viterbi(Obs)
+    Obs = ["correct","correct","wrong","correct","correct","wrong"]
+    Obs2 = ["correct","correct","wrong","correct","correct","wrong"]
+    Obs3 = ["correct","correct","wrong","correct","correct","wrong"]
+
     Obs_seq = []
     Obs_seq.append(Obs)
     Obs_seq.append(Obs2)
     Obs_seq.append(Obs3)
 
-    val_seq = []
-    val_seq.append(test)
-    val_seq.append(test2)
-    hmm.bawm_welch(Obs_seq, debug = False, epochs= 10, val = val_seq)
+
+
+    #print hmm.forward(Obs, debug=True, scaling=True)
+
+    hmm.bawm_welch(Obs_seq, debug = True, epochs= 5, val=Obs_seq )
+
+

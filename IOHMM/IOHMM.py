@@ -234,7 +234,7 @@ class IOHMM:
         updateT = args['updateT'] if 'updateT' in args else True
         updateE = args['updateE'] if 'updateE' in args else True
         debug = args['debug'] if 'debug' in args else False
-        epsilon = args['epsilon'] if 'epsilon' in args else 0.001
+        epsilon = args['epsilon'] if 'epsilon' in args else 0.01
         Val_seq = args['val'] if 'val' in args else None
 
         LLS = []
@@ -272,13 +272,23 @@ class IOHMM:
                 input = self.toIndex(Input[i], self.input_map)
                 output = self.toIndex(Output[i], self.output_map)
 
+
                 raw_Gamma = Alpha * Beta
+
                 Gamma = raw_Gamma/raw_Gamma.sum(0)
                 if debug:
                     print "\nRaw Gamma:"
                     print raw_Gamma
                     print "\nGamma:"
                     print Gamma
+                print "Alpha"
+                print Alpha
+                print "Beta"
+                print Beta
+                print "raw_Gamma"
+                print raw_Gamma
+                print "Gamma"
+                print Gamma
 
 
                 exp_si_t0 += Gamma[:, 0]
@@ -381,18 +391,23 @@ class IOHMM:
 if __name__ == '__main__':
     input = ["elicit", "tell"]
     output = ["wrong", "correct", "told"]
-    input_seq = ["elicit", "tell", "elicit", "elicit", "tell"]
-    output_seq = ["wrong", "told","correct","wrong","told"]
+    input_seq = ["elicit", "elicit", "tell", "elicit", "tell"]
+    output_seq = ["wrong", "wrong","told","wrong","told"]
     T = numpy.array([0.2,0.8,0,1,0.1,0.9,0,1]).reshape(2,2,2)
     E = numpy.array([0.5,0.5,0,0.1,0.9,0,0,0,1,0,0,1]).reshape(2,2,3)
-    Pi = numpy.array([0.5,0.5])
+    Pi = numpy.array([0.9,0.1])
     iohmm = IOHMM(2, input=input, output=output, T=T, E=E, Pi=Pi)
     iohmm.print_iohmm("ORIGINAL IOHMM ELEMENTS")
     input_seqs = []
     input_seqs.append(input_seq)
     input_seqs.append(input_seq)
+    input_seqs.append(input_seq)
+    input_seqs.append(input_seq)
     output_seqs = []
     output_seqs.append(output_seq)
     output_seqs.append(output_seq)
+    output_seqs.append(output_seq)
+    output_seqs.append(output_seq)
 
-    iohmm.bawn_welch(input_seqs,output_seqs, debug= False, val = (input_seqs, output_seqs))
+    iohmm.bawn_welch(input_seqs,output_seqs, debug= True, val = (input_seqs, output_seqs), epsilon= 0.001)
+    #iohmm.backward(input_seq, output_seq, debug= True)
