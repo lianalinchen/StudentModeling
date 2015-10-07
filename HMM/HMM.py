@@ -434,10 +434,13 @@ class HMM:
         # Calculate Loglikelihood of a test sequence
         if Val_seq != None:
             probs = 0
+            print "\nThe predicted probability of in learned state at the last training step:"
             for Obs in Val_seq:
                 L = len(Obs)
-                prob, Alpha = self.forward(Obs, scaling= False, debug=False)
+                prob, Alpha, c = self.forward(Obs, scaling= True, debug=False)
                 probs += prob
+
+                print Alpha[:,L-1][1]
 
             if debug:
                 print "\n"*2+ "*"*24 + "\n" +"*"*1+" Validation  "+"*"*1 + "\n" + "*"*24 + "\n"
@@ -446,7 +449,7 @@ class HMM:
             else:
                 print "\nTesting sequence loglikelihood is: "+ str(probs)
 
-            return probs
+
 
         self.print_HMM("Updated HMM")
         return (self.Pi, self.T, self.E)
