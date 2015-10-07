@@ -1,11 +1,11 @@
 __author__ = 'adminuser'
-
+import os
 class SequenceGenerator:
     def __init__(self, filename, type):
         self.filename = filename
         self.type = type
 
-    def get(self, debug):
+    def getTrainSeq(self, debug):
         if self.type.lower() == "hmm":
             return self.getHMMSeq(debug)
 
@@ -19,22 +19,29 @@ class SequenceGenerator:
         seqs = {}
 
         for each in read_date:
-            key = each.split()[0]
+            key = each.split()[0][7:]
             if key not in seqs:
                 seqs[key] = []
                 seqs[key].append(each.split()[1])
             else:
                 seqs[key].append(each.split()[1])
 
-        seq = []
+
+        #Training sequence will have the same length while full sequence will remain its original length.
+        train_seq = []
+        full_seq = []
+
         min_length = float("inf")
         for each in seqs:
             length = len(seqs[each])
             if length < min_length:
                 min_length = length
 
-        for each in seqs:
-            seq.append(seqs[each][:min_length])
+        #Sorted the key to sequence is the same order
+        for each in sorted(seqs.iterkeys(), key=int):
+            train_seq.append(seqs[each][:min_length])
+            full_seq.append(seqs[each])
+        print "\n\n"
 
         if debug:
             for each in seq:
@@ -42,7 +49,7 @@ class SequenceGenerator:
             print "The length of sequence is "+ str(min_length)
 
         f.close()
-        return seq
+        return (train_seq, full_seq)
 
     def getIOHMMSeq(self, debug = True):
         with open(self.filename,'r') as f:
@@ -84,9 +91,12 @@ class SequenceGenerator:
 
 
 if __name__ == '__main__':
-    sg = SequenceGenerator("./Sequence/KC1_HMM.txt","hmm")
-    print sg.get(debug= False)
+    sg = SequenceGenerator(os.path.dirname(os.path.dirname(__file__)) + "/Sequence/Cordillera/EX1/KC1_HMM.txt","hmm")
+    result =  sg.getHMMSeq(debug= False)
+    for each in result[0]:
+        print each
 
-    sg2 = SequenceGenerator("./Sequence/KC1_IOHMM.txt","iohmm")
-    print sg2.get(debug = False)
+    for each in result[1]:
+        print each
+
 
